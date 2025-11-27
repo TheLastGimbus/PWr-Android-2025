@@ -6,32 +6,26 @@ import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
 import android.hardware.SensorManager
 import android.os.Bundle
+import android.util.Log
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import androidx.navigation.NavType
@@ -46,11 +40,19 @@ sealed class Screen(val route: String) {
     object Main : Screen("main_screen")
     object Wow1 : Screen("wow1_screen")
     object Wow2 : Screen("wow2_screen")
+    object Wow3 : Screen("wow3_screen")
 }
 
 class MainActivity : ComponentActivity(), SensorEventListener {
 
+
+    private var accelerometerVals = mutableStateListOf(0.0f, 0.0f, 0.0f)
+    private var gravityVals = mutableStateListOf(0.0f, 0.0f, 0.0f)
+    private var light = mutableStateOf(0.0f)
+
+
     private lateinit var sensorManager: SensorManager
+
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -66,15 +68,19 @@ class MainActivity : ComponentActivity(), SensorEventListener {
     }
 
     override fun onResume() {
-        super.onResume()
-        for (type in listOf(Sensor.TYPE_LINEAR_ACCELERATION)){
-            sensorManager.registerListener(this, sensorManager.getDefaultSensor(it), 100000)
+        for (type in listOf(Sensor.TYPE_LINEAR_ACCELERATION, Sensor.TYPE_GRAVITY, Sensor.ty)) {
+            sensorManager.registerListener(this, sensorManager.getDefaultSensor(type), 100000)
         }
+        super.onResume()
+    }
 
+    override fun onPause() {
+        sensorManager.unregisterListener(this)
+        super.onPause()
     }
 
 
-    @Preview(showBackground = true)
+    //    @Preview(showBackground = true)
     @Composable
     fun NavigationStack(context: Context? = null) {
         val navController = rememberNavController()
@@ -102,6 +108,9 @@ class MainActivity : ComponentActivity(), SensorEventListener {
                     weight = it.arguments?.getInt("weight")
                 )
             }
+            composable(route = Screen.Wow3.route) {
+                Wow3ActivityScaffold(context = context)
+            }
         }
     }
 
@@ -111,9 +120,6 @@ class MainActivity : ComponentActivity(), SensorEventListener {
         fun spacer() = Spacer(Modifier.height(16.dp))
         var textHeight by rememberSaveable { mutableStateOf("150") }
         var textWeight by rememberSaveable { mutableStateOf("60") }
-
-//        val sensorManager = context!!.getSystemService(Context.SENSOR_SERVICE) as SensorManager
-//        val sensor: Sensor? = sensorManager.getDefaultSensor(Sensor.TYPE_LINEAR_ACCELERATION)
 
         Scaffold(
             modifier = Modifier
@@ -127,6 +133,7 @@ class MainActivity : ComponentActivity(), SensorEventListener {
                     .fillMaxSize()
                     .padding(innerPadding)
             ) {
+                Text("${accelerometerVals[0]} | ${accelerometerVals[1]} | ${accelerometerVals[2]}")
                 Button(onClick = {
                     if (context != null) {
                         Toast.makeText(context, "Wow ❗", Toast.LENGTH_SHORT).show()
@@ -153,9 +160,13 @@ class MainActivity : ComponentActivity(), SensorEventListener {
                 spacer()
                 Button(onClick = {
                     navController.navigate(route = Screen.Wow2.route + "?height=$textHeight&weight=$textWeight")
-
                 }) {
                     Text("Wow 2 ‼")
+                }
+                Button(onClick = {
+                    navController.navigate(route = Screen.Wow3.route)
+                }) {
+                    Text("Wow 3 ‼")
                 }
             }
         }
@@ -220,12 +231,77 @@ class MainActivity : ComponentActivity(), SensorEventListener {
         }
     }
 
-    override fun onAccuracyChanged(p0: Sensor?, p1: Int) {
-        TODO("Not yet implemented")
+
+    @Composable
+    fun Wow3ActivityScaffold(context: Context? = null, height: Int? = null, weight: Int? = null) {
+
+
+        val configuration = LocalConfiguration.current
+        val density = LocalDensity.current
+
+        val screenWidthDp = with(density) { configuration.screenWidthDp.dp }
+        val screenHeightDp = with(density) { configuration.screenHeightDp.dp }
+
+        @Composable
+        fun spacer() = Spacer(Modifier.height(16.dp))
+
+        val x = (screenWidthDp / 2) - ((screenWidthDp / 2) * (gravityVals[0] / 10))
+        val y = (screenHeightDp / 2) + ((screenHeightDp) * (gravityVals[1] / 10) / 2)
+
+        Scaffold(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(16.dp)
+        ) { innerPadding ->
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding)
+            ) {
+                Box(modifier = Modifier.fillMaxSize()) {
+                    Text(
+                        text = "O",
+                        modifier = Modifier.offset(x, y)
+                    )
+                }
+                Text(
+                    "Twoje BMI to: ${
+                        String.format(
+                            "%.2f", bmi(height?.toDouble() ?: 0.0, weight?.toDouble() ?: 0.0)
+                        )
+                    }"
+                )
+                spacer()
+
+                Image(
+                    painter = painterResource(R.mipmap.bmi),
+                    contentDescription = "AAAA"
+                )
+            }
+        }
     }
 
-    override fun onSensorChanged(p0: SensorEvent?) {
-        TODO("Not yet implemented")
+    override fun onAccuracyChanged(p0: Sensor?, p1: Int) {
+    }
+
+    override fun onSensorChanged(event: SensorEvent) {
+        when (event.sensor.type) {
+            Sensor.TYPE_LINEAR_ACCELERATION -> {
+                Log.d("MOJAG", event.toString())
+                accelerometerVals[0] = event.values[0]
+                accelerometerVals[1] = event.values[1]
+                accelerometerVals[2] = event.values[2]
+            }
+
+            Sensor.TYPE_GRAVITY -> {
+                gravityVals[0] = event.values[0]
+                gravityVals[1] = event.values[1]
+                gravityVals[2] = event.values[2]
+
+            }
+        }
     }
 
 }
