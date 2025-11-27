@@ -6,12 +6,13 @@ import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
 import android.hardware.SensorManager
 import android.os.Bundle
-import android.util.Log
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
@@ -22,6 +23,8 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
@@ -48,7 +51,7 @@ class MainActivity : ComponentActivity(), SensorEventListener {
 
     private var accelerometerVals = mutableStateListOf(0.0f, 0.0f, 0.0f)
     private var gravityVals = mutableStateListOf(0.0f, 0.0f, 0.0f)
-    private var light = mutableStateOf(0.0f)
+    private var lightVals = mutableStateListOf(0.0f)
 
 
     private lateinit var sensorManager: SensorManager
@@ -68,7 +71,7 @@ class MainActivity : ComponentActivity(), SensorEventListener {
     }
 
     override fun onResume() {
-        for (type in listOf(Sensor.TYPE_LINEAR_ACCELERATION, Sensor.TYPE_GRAVITY, Sensor.ty)) {
+        for (type in listOf(Sensor.TYPE_LINEAR_ACCELERATION, Sensor.TYPE_GRAVITY, Sensor.TYPE_LIGHT)) {
             sensorManager.registerListener(this, sensorManager.getDefaultSensor(type), 100000)
         }
         super.onResume()
@@ -121,6 +124,20 @@ class MainActivity : ComponentActivity(), SensorEventListener {
         var textHeight by rememberSaveable { mutableStateOf("150") }
         var textWeight by rememberSaveable { mutableStateOf("60") }
 
+        @Composable
+        fun ColorChangingBox(colorProgress: Float) {
+            val color by animateColorAsState(
+                targetValue = lerp(Color.Red, Color.Green, (colorProgress / 150.0f)),
+                label = "color_animation"
+            )
+            Box(
+                modifier = Modifier
+                    .size(64.dp, 64.dp)
+                    .background(color)
+            )
+        }
+//        val progress = remember { mutableFloatStateOf(lightVals[0]) }
+
         Scaffold(
             modifier = Modifier
                 .fillMaxSize()
@@ -133,7 +150,8 @@ class MainActivity : ComponentActivity(), SensorEventListener {
                     .fillMaxSize()
                     .padding(innerPadding)
             ) {
-                Text("${accelerometerVals[0]} | ${accelerometerVals[1]} | ${accelerometerVals[2]}")
+                ColorChangingBox(lightVals[0])
+                Text("${accelerometerVals[0].toInt()} | ${accelerometerVals[1].toInt()} | ${accelerometerVals[2].toInt()}")
                 Button(onClick = {
                     if (context != null) {
                         Toast.makeText(context, "Wow ❗", Toast.LENGTH_SHORT).show()
@@ -289,7 +307,6 @@ class MainActivity : ComponentActivity(), SensorEventListener {
     override fun onSensorChanged(event: SensorEvent) {
         when (event.sensor.type) {
             Sensor.TYPE_LINEAR_ACCELERATION -> {
-                Log.d("MOJAG", event.toString())
                 accelerometerVals[0] = event.values[0]
                 accelerometerVals[1] = event.values[1]
                 accelerometerVals[2] = event.values[2]
@@ -299,7 +316,10 @@ class MainActivity : ComponentActivity(), SensorEventListener {
                 gravityVals[0] = event.values[0]
                 gravityVals[1] = event.values[1]
                 gravityVals[2] = event.values[2]
+            }
 
+            Sensor.TYPE_LIGHT -> {
+                lightVals[0] = event.values[0]
             }
         }
     }
