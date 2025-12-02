@@ -43,24 +43,12 @@ sealed class Screen(val route: String) {
     object Main : Screen("main_screen")
     object Wow1 : Screen("wow1_screen")
     object Wow2 : Screen("wow2_screen")
-    object Wow3 : Screen("wow3_screen")
 }
 
-class MainActivity : ComponentActivity(), SensorEventListener {
-
-
-    private var accelerometerVals = mutableStateListOf(0.0f, 0.0f, 0.0f)
-    private var gravityVals = mutableStateListOf(0.0f, 0.0f, 0.0f)
-    private var lightVals = mutableStateListOf(0.0f)
-
-
-    private lateinit var sensorManager: SensorManager
-
+class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
-        sensorManager = getSystemService(Context.SENSOR_SERVICE) as SensorManager
 
         enableEdgeToEdge()
         setContent {
@@ -69,19 +57,6 @@ class MainActivity : ComponentActivity(), SensorEventListener {
             }
         }
     }
-
-    override fun onResume() {
-        for (type in listOf(Sensor.TYPE_LINEAR_ACCELERATION, Sensor.TYPE_GRAVITY, Sensor.TYPE_LIGHT)) {
-            sensorManager.registerListener(this, sensorManager.getDefaultSensor(type), 100000)
-        }
-        super.onResume()
-    }
-
-    override fun onPause() {
-        sensorManager.unregisterListener(this)
-        super.onPause()
-    }
-
 
     //    @Preview(showBackground = true)
     @Composable
@@ -111,9 +86,6 @@ class MainActivity : ComponentActivity(), SensorEventListener {
                     weight = it.arguments?.getInt("weight")
                 )
             }
-            composable(route = Screen.Wow3.route) {
-                Wow3ActivityScaffold(context = context)
-            }
         }
     }
 
@@ -124,19 +96,6 @@ class MainActivity : ComponentActivity(), SensorEventListener {
         var textHeight by rememberSaveable { mutableStateOf("150") }
         var textWeight by rememberSaveable { mutableStateOf("60") }
 
-        @Composable
-        fun ColorChangingBox(colorProgress: Float) {
-            val color by animateColorAsState(
-                targetValue = lerp(Color.Red, Color.Green, (colorProgress / 150.0f)),
-                label = "color_animation"
-            )
-            Box(
-                modifier = Modifier
-                    .size(64.dp, 64.dp)
-                    .background(color)
-            )
-        }
-//        val progress = remember { mutableFloatStateOf(lightVals[0]) }
 
         Scaffold(
             modifier = Modifier
@@ -150,8 +109,6 @@ class MainActivity : ComponentActivity(), SensorEventListener {
                     .fillMaxSize()
                     .padding(innerPadding)
             ) {
-                ColorChangingBox(lightVals[0])
-                Text("${accelerometerVals[0].toInt()} | ${accelerometerVals[1].toInt()} | ${accelerometerVals[2].toInt()}")
                 Button(onClick = {
                     if (context != null) {
                         Toast.makeText(context, "Wow ❗", Toast.LENGTH_SHORT).show()
@@ -180,11 +137,6 @@ class MainActivity : ComponentActivity(), SensorEventListener {
                     navController.navigate(route = Screen.Wow2.route + "?height=$textHeight&weight=$textWeight")
                 }) {
                     Text("Wow 2 ‼")
-                }
-                Button(onClick = {
-                    navController.navigate(route = Screen.Wow3.route)
-                }) {
-                    Text("Wow 3 ‼")
                 }
             }
         }
@@ -245,81 +197,6 @@ class MainActivity : ComponentActivity(), SensorEventListener {
                     painter = painterResource(R.mipmap.bmi),
                     contentDescription = "AAAA"
                 )
-            }
-        }
-    }
-
-
-    @Composable
-    fun Wow3ActivityScaffold(context: Context? = null, height: Int? = null, weight: Int? = null) {
-
-
-        val configuration = LocalConfiguration.current
-        val density = LocalDensity.current
-
-        val screenWidthDp = with(density) { configuration.screenWidthDp.dp }
-        val screenHeightDp = with(density) { configuration.screenHeightDp.dp }
-
-        @Composable
-        fun spacer() = Spacer(Modifier.height(16.dp))
-
-        val x = (screenWidthDp / 2) - ((screenWidthDp / 2) * (gravityVals[0] / 10))
-        val y = (screenHeightDp / 2) + ((screenHeightDp) * (gravityVals[1] / 10) / 2)
-
-        Scaffold(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(16.dp)
-        ) { innerPadding ->
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center,
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(innerPadding)
-            ) {
-                Box(modifier = Modifier.fillMaxSize()) {
-                    Text(
-                        text = "O",
-                        modifier = Modifier.offset(x, y)
-                    )
-                }
-                Text(
-                    "Twoje BMI to: ${
-                        String.format(
-                            "%.2f", bmi(height?.toDouble() ?: 0.0, weight?.toDouble() ?: 0.0)
-                        )
-                    }"
-                )
-                spacer()
-
-                Image(
-                    painter = painterResource(R.mipmap.bmi),
-                    contentDescription = "AAAA"
-                )
-            }
-        }
-    }
-
-    override fun onAccuracyChanged(p0: Sensor?, p1: Int) {
-    }
-
-    override fun onSensorChanged(event: SensorEvent) {
-        when (event.sensor.type) {
-            Sensor.TYPE_LINEAR_ACCELERATION -> {
-                accelerometerVals[0] = event.values[0]
-                accelerometerVals[1] = event.values[1]
-                accelerometerVals[2] = event.values[2]
-            }
-
-            Sensor.TYPE_GRAVITY -> {
-                gravityVals[0] = event.values[0]
-                gravityVals[1] = event.values[1]
-                gravityVals[2] = event.values[2]
-            }
-
-            Sensor.TYPE_LIGHT -> {
-                lightVals[0] = event.values[0]
             }
         }
     }
