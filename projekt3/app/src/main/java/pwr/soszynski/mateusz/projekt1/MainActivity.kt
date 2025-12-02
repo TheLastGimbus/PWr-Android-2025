@@ -1,19 +1,15 @@
 package pwr.soszynski.mateusz.projekt1
 
 import android.content.Context
-import android.hardware.Sensor
-import android.hardware.SensorEvent
-import android.hardware.SensorEventListener
-import android.hardware.SensorManager
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
 import androidx.compose.material3.Scaffold
@@ -23,10 +19,6 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.lerp
-import androidx.compose.ui.platform.LocalConfiguration
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -36,6 +28,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import kotlinx.coroutines.launch
 import pwr.soszynski.mateusz.projekt1.ui.theme.Projekt1Theme
 import kotlin.math.pow
 
@@ -43,6 +36,7 @@ sealed class Screen(val route: String) {
     object Main : Screen("main_screen")
     object Wow1 : Screen("wow1_screen")
     object Wow2 : Screen("wow2_screen")
+    object Wow3 : Screen("wow2_screen")
 }
 
 class MainActivity : ComponentActivity() {
@@ -85,6 +79,10 @@ class MainActivity : ComponentActivity() {
                     height = it.arguments?.getInt("height"),
                     weight = it.arguments?.getInt("weight")
                 )
+            }
+
+            composable(route = Screen.Wow3.route) {
+                WebSocketScreen(WebSocketManager())
             }
         }
     }
@@ -137,6 +135,11 @@ class MainActivity : ComponentActivity() {
                     navController.navigate(route = Screen.Wow2.route + "?height=$textHeight&weight=$textWeight")
                 }) {
                     Text("Wow 2 ‼")
+                }
+                Button(onClick = {
+                    navController.navigate(route = Screen.Wow3.route)
+                }) {
+                    Text("Wow 3 ‼")
                 }
             }
         }
@@ -197,6 +200,34 @@ class MainActivity : ComponentActivity() {
                     painter = painterResource(R.mipmap.bmi),
                     contentDescription = "AAAA"
                 )
+            }
+        }
+    }
+
+    @Composable
+    fun WebSocketScreen(manager: WebSocketManager) {
+        val messages = remember { mutableStateListOf<String>() }
+        val scope = rememberCoroutineScope()
+
+        LaunchedEffect(Unit) {
+            scope.launch {
+                manager.connect()
+                manager.messages.collect { msg ->
+                    messages.add(msg)
+                }
+            }
+        }
+
+        Scaffold(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(16.dp)
+        ) { innerPadding ->
+
+            LazyColumn {
+                items(messages) { message ->
+                    Text(text = message, modifier = Modifier.padding(8.dp))
+                }
             }
         }
     }

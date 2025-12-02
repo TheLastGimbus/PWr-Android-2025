@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -25,6 +26,10 @@ void main(List<String> arguments) async {
         }
       }
     });
+    Stream.periodic(
+      Duration(seconds: 1),
+      (i) => DateTime.now().toIso8601String(),
+    ).listen(socket.sendToAll);
     send = socket.sendToAll;
   });
 
