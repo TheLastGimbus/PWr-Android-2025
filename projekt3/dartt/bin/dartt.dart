@@ -33,5 +33,10 @@ void main(List<String> arguments) async {
     send = socket.sendToAll;
   });
 
+  for (var value in (await NetworkInterface.list(type: InternetAddressType.IPv4))) {
+    print("${value.addresses.first.address} - ${value.name}");
+  };
+  print("Port WS: 5001");
+
   await server.listen(host: '0.0.0.0', port: 5000, wsPort: 5001);
 }
