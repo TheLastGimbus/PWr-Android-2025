@@ -1,13 +1,13 @@
 package pwr.soszynski.mateusz.projekt1
 
-import io.ktor.client.HttpClient
-import io.ktor.client.engine.cio.CIO
-import io.ktor.client.plugins.websocket.WebSockets
-import io.ktor.client.plugins.websocket.webSocket
-import io.ktor.websocket.Frame
-import io.ktor.websocket.readText
+import android.util.Log
+import io.ktor.client.*
+import io.ktor.client.engine.cio.*
+import io.ktor.client.plugins.websocket.*
+import io.ktor.websocket.*
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
 
 class WebSocketManager {
     private val client = HttpClient(CIO) {
@@ -15,21 +15,34 @@ class WebSocketManager {
     }
 
     private val _messages = MutableSharedFlow<String>()
-    val messages: SharedFlow<String> = _messages
+    val messages: SharedFlow<String> = _messages.asSharedFlow()
 
-    suspend fun connect() {
-        client.webSocket("wss://192.168.1.98:5001/ws") {
+    private var sender: (suspend (text: String) -> Unit)? = null
+
+    suspend fun sendStr(msg: String) {
+        if (sender != null) {
+            sender!!(msg)
+        }
+    }
+
+    suspend fun connect(url: String) {
+        client.webSocket(url) {
             try {
                 // Send message
-                send(Frame.Text("Hello Server!"))
+                sender = { send(Frame.Text(it)) }
 
                 // Listen for incoming frames
                 for (frame in incoming) {
                     when (frame) {
-                        is Frame.Text -> _messages.emit(frame.readText())
+                        is Frame.Text -> {
+                            Log.d("MSG", frame.readText())
+                            _messages.emit(frame.readText())
+                        }
+
                         else -> {}
                     }
                 }
+                sender = null
             } catch (e: Exception) {
                 println("WebSocket error: ${e.message}")
             }

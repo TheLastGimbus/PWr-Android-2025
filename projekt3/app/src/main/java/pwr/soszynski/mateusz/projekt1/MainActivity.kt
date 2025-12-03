@@ -2,6 +2,7 @@ package pwr.soszynski.mateusz.projekt1
 
 import android.content.Context
 import android.os.Bundle
+import android.util.Log
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -40,6 +41,7 @@ sealed class Screen(val route: String) {
 }
 
 class MainActivity : ComponentActivity() {
+    val mgr = WebSocketManager()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -82,7 +84,7 @@ class MainActivity : ComponentActivity() {
             }
 
             composable(route = Screen.Wow3.route) {
-                WebSocketScreen(WebSocketManager())
+                WebSocketScreen(mgr)
             }
         }
     }
@@ -208,10 +210,12 @@ class MainActivity : ComponentActivity() {
     fun WebSocketScreen(manager: WebSocketManager) {
         val messages = remember { mutableStateListOf<String>() }
         val scope = rememberCoroutineScope()
+        var ipAddr by rememberSaveable { mutableStateOf("") }
+        var cmd by rememberSaveable { mutableStateOf("") }
+
 
         LaunchedEffect(Unit) {
             scope.launch {
-                manager.connect()
                 manager.messages.collect { msg ->
                     messages.add(msg)
                 }
@@ -223,12 +227,57 @@ class MainActivity : ComponentActivity() {
                 .fillMaxSize()
                 .padding(16.dp)
         ) { innerPadding ->
+            Column(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
 
-            LazyColumn {
-                items(messages) { message ->
-                    Text(text = message, modifier = Modifier.padding(8.dp))
+                TextField(
+                    value = ipAddr,
+                    onValueChange = {
+                        ipAddr = it
+                    },
+                    keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Number),
+                    label = { Text("Adresik") }
+                )
+                Button(
+                    onClick = {
+                        scope.launch {
+                            try {
+                                manager.connect("ws://${ipAddr}:5001/ws")
+                            } catch (e: Exception) {
+                                Log.e("BŁONT", e.toString())
+                            }
+                        }
+                    }
+                ) {
+                    Text("Connect")
+                }
+                TextField(
+                    value = cmd,
+                    onValueChange = {
+                        cmd = it
+                    },
+                    label = { Text("Komenda") }
+                )
+                Button(
+                    onClick = {
+                        scope.launch {
+                            try {
+                                manager.sendStr(cmd)
+                            } catch (e: Exception) {
+                                Log.e("BŁONT", e.toString())
+                            }
+                        }
+                    }
+                ) {
+                    Text("Send")
+                }
+
+                LazyColumn {
+                    items(messages) { message ->
+                        Text(text = message, modifier = Modifier.padding(8.dp))
+                    }
                 }
             }
+
         }
     }
 
